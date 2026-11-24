@@ -23,7 +23,7 @@ Cliquez sur les liens ou les images pour lancer les visualisations dans votre na
 ---
 
 #### 1. Vortex Local & Singularité (Liquide + lignes de flux)
-[![Vortex local et lignes de flux](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/Vorticite%20-%20Particules%20-%20lignes%20de%20flux.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/Vorticit%C3%A9-Particules-lignes-de-flux.html)
+[![Vortex local et lignes de flux](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/Vorticité-Particules-lignes-de-flux.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/Vorticit%C3%A9-Particules-lignes-de-flux.html)
 - **Fichier :** `Vorticité-Particules-lignes-de-flux.html`
 - **Description :** Un rendu fluide sous forme de particules et de lignes de courant lisses. Le vortex est concentré près de l'origine (le pôle), illustrant la concentration de vorticité et la croissance de `|ω(0)|` tandis que la vitesse globale reste bornée (Théorème 1.1).
 
