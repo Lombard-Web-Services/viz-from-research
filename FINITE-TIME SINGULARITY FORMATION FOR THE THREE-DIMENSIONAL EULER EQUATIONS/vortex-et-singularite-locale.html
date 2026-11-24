@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Liquide vortex — singularité Euler 3D (papier Alpöge–Buckmaster–Coiculescu)</title>
+<style>
+  body { margin:0; overflow:hidden; background:#02040a; font-family:monospace; }
+  #info {
+    position:absolute; top:12px; left:12px; color:#9fd; font-size:13px;
+    background:rgba(0,0,0,0.55); padding:10px 14px; border-radius:8px;
+    border:1px solid rgba(120,220,255,0.25); line-height:1.5; pointer-events:none;
+  }
+  #info b { color:#6ef; }
+  #omega { color:#ff5a8a; font-weight:bold; }
+  #controls { position:absolute; bottom:14px; left:12px; color:#6a9; font-size:12px; }
+  canvas { display:block; }
+</style>
+</head>
+<body>
+<div id="info">
+  <b>Liquide — vortex & singularité locale</b><br>
+  |ω(0)| → <span id="omega">0</span> (croît, Thm 1.1)<br>
+  ‖u‖<sub>∞</sub> bornée · écoulement incompressible
+</div>
+<div id="controls">Souris : rotation · Molette : zoom · Espace : pause</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+// SCÈNE / RENDU
+// ============================================================
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x02040a, 0.045);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(3.2, 2.0, 4.0);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x02040a, 1);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.minDistance = 1.5;
+controls.maxDistance = 15;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.35;
+
+// ============================================================
+// PARTICULES = LIQUIDE
+// Champ de vitesse inspiré du papier :
+//   - vorticité concentrée près de l'origine (pôle)
+//   - vitesse tangentielle ~ 1/(ε + d²)
+//   - attraction méridienne ~ 1/(a + d)
+//   - vitesse BORNÉE (Thm 1.1)
+//   - divergence ~ nulle (incompressible)
+// ============================================================
+const N = 9000;                         // nb de particules-liquide
+const pos = new Float32Array(N*3);
+const vel = new Float32Array(N*3);
+const seed = new Float32Array(N);
+const life = new Float32Array(N);
+const size = new Float32Array(N);
+const hue  = new Float32Array(N);
+
+const R = 1.0;                          // rayon de référence du domaine
+const ORIGIN = new THREE.Vector3(0,1,0); // pôle "origine" de la singularité
+
+function randInSphere(rMin, rMax) {
+  // distribution uniforme en volume dans une coquille
+  const u = Math.random();
+  const r = Math.cbrt(u*(rMax**3 - rMin**3) + rMin**3);
+  const z = Math.random()*2 - 1;
+  const t = Math.random()*Math.PI*2;
+  const s = Math.sqrt(1 - z*z);
+  return [r*s*Math.cos(t), r*z, r*s*Math.sin(t)];
+}
+
+function spawn(i, nearOrigin=false) {
+  let p;
+  if (nearOrigin) {
+    // naissance près du pôle (convergence du vortex)
+    const r = 0.15 + Math.random()*0.5;
+    const dir = new THREE.Vector3(
+      (Math.random()-0.5), (Math.random()*0.4+0.5), (Math.random()-0.5)
+    ).normalize();
+    p = dir.multiplyScalar(r);
+  } else {
+    p = new THREE.Vector3(...randInSphere(0.3, 1.6));
+  }
+  pos[i*3] = p.x; pos[i*3+1] = p.y; pos[i*3+2] = p.z;
+  vel[i*3] = vel[i*3+1] = vel[i*3+2] = 0;
+  seed[i] = Math.random()*10;
+  life[i] = 0.5 + Math.random()*0.5;
+  size[i] = 0.6 + Math.random()*1.4;
+  hue[i]  = Math.random();
+}
+for (let i=0;i<N;i++) spawn(i, Math.random()<0.35);
+
+// Champ de vitesse analytique (inspiré Craik–Criminale / vortex concentré)
+const _pos = new THREE.Vector3();
+const _radial = new THREE.Vector3();
+const _tangent = new THREE.Vector3();
+const _meridian = new THREE.Vector3();
+const _out = new THREE.Vector3();
+
+function velocityAt(x, y, z, time, sd, out) {
+  _pos.set(x, y, z);
+  const r = _pos.length() + 1e-6;
+
+  // distance angulaire au pôle (axe +y)
+  const cosPhi = THREE.MathUtils.clamp(y / r, -1, 1);
+  const distPole = Math.acos(cosPhi);        // 0 au pôle
+  const d2 = distPole*distPole;
+
+  // intensité de rotation : explose près du pôle (vorticité locale)
+  const omega = 2.2 / (0.04 + d2 + 1e-3);
+
+  // base locale autour de l'axe y
+  _radial.set(x, 0, z);
+  const rl = _radial.length() + 1e-6;
+  _tangent.set(-_radial.z/rl, 0, _radial.x/rl);
+
+  // composante tangentielle (vortex)
+  out.copy(_tangent).multiplyScalar(omega * 0.22);
+
+  // attraction méridienne vers le pôle (convergence)
+  _meridian.set(0,1,0).addScaledVector(_pos.clone().normalize(), -cosPhi).normalize();
+  const pull = 0.9 / (0.18 + distPole);
+  out.addScaledVector(_meridian, pull * 0.30);
+
+  // turbulence douce (bruit pseudo-périodique), petite amplitude
+  const t = time*1.3 + sd;
+  out.x += 0.18*Math.sin(t*1.7 + y*4.0 + z*3.0);
+  out.y += 0.12*Math.sin(t*1.1 + x*3.5 + z*2.0);
+  out.z += 0.18*Math.cos(t*1.5 + x*2.5 + y*3.5);
+
+  // ---- CLAMP : vitesse bornée (Théorème 1.1) ----
+  const sp = Math.hypot(out.x, out.y, out.z);
+  const MAX_SPEED = 1.8;
+  if (sp > MAX_SPEED) out.multiplyScalar(MAX_SPEED/sp);
+
+  // projection pour rester "sur" une coquille fluide (incompressible approx.)
+  // -> composante radiale atténuée pour éviter l'effondrement total
+  const n = _pos.clone().normalize();
+  const radialComp = out.dot(n);
+  out.addScaledVector(n, -radialComp * 0.85); // garde un peu de convergence
+
+  return out;
+}
+
+// ============================================================
+// SHADER des particules : rendu fluide (glow, transparence, halo)
+// ============================================================
+const vShader = /* glsl */`
+  attribute float aSize;
+  attribute float aHue;
+  attribute float aAlpha;
+  varying float vHue;
+  varying float vAlpha;
+  void main() {
+    vHue = aHue;
+    vAlpha = aAlpha;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = aSize * (260.0 / -mv.z);
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+
+const fShader = /* glsl */`
+  varying float vHue;
+  varying float vAlpha;
+  void main() {
+    vec2 uv = gl_PointCoord - 0.5;
+    float d = length(uv);
+    if (d > 0.5) discard;
+    // noyau doux (liquide)
+    float core = smoothstep(0.5, 0.0, d);
+    float glow = pow(1.0 - d*2.0, 2.5);
+    // couleur : cyan loin, magenta/rouge près du pôle
+    vec3 cyan    = vec3(0.05, 0.75, 1.0);
+    vec3 magenta = vec3(1.0, 0.15, 0.55);
+    vec3 yellow  = vec3(1.0, 0.85, 0.35);
+    float h = clamp(vHue, 0.0, 1.0);
+    vec3 col = mix(cyan, magenta, smoothstep(0.0, 0.7, h));
+    col = mix(col, yellow, smoothstep(0.75, 1.0, h));
+    float a = (core*0.35 + glow*0.75) * vAlpha;
+    gl_FragColor = vec4(col * (0.6 + glow*1.6), a);
+  }
+`;
+
+const geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+const aSize  = new Float32Array(N);
+const aHue   = new Float32Array(N);
+const aAlpha = new Float32Array(N);
+geo.setAttribute('aSize',  new THREE.BufferAttribute(aSize, 1));
+geo.setAttribute('aHue',   new THREE.BufferAttribute(aHue, 1));
+geo.setAttribute('aAlpha', new THREE.BufferAttribute(aAlpha, 1));
+
+const mat = new THREE.ShaderMaterial({
+  vertexShader: vShader,
+  fragmentShader: fShader,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending
+});
+
+const points = new THREE.Points(geo, mat);
+points.frustumCulled = false;
+scene.add(points);
+
+// ============================================================
+// TRAÎNÉES (trails) : lignes de courant du fluide
+// ============================================================
+const TRAIL_N = 900;
+const TRAIL_LEN = 8;
+const trailPos = new Float32Array(TRAIL_N*TRAIL_LEN*3);
+const trailSeed = new Float32Array(TRAIL_N);
+const trailLife = new Float32Array(TRAIL_N);
+const trailHead = new Float32Array(TRAIL_N*3);
+
+for (let i=0;i<TRAIL_N;i++){
+  const p = new THREE.Vector3(...randInSphere(0.25, 1.4));
+  trailSeed[i] = Math.random()*10;
+  trailLife[i] = Math.random();
+  for (let j=0;j<TRAIL_LEN;j++){
+    trailPos[(i*TRAIL_LEN+j)*3+0] = p.x;
+    trailPos[(i*TRAIL_LEN+j)*3+1] = p.y;
+    trailPos[(i*TRAIL_LEN+j)*3+2] = p.z;
+  }
+  trailHead[i*3]=p.x; trailHead[i*3+1]=p.y; trailHead[i*3+2]=p.z;
+}
+
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos,3));
+// couleur dégradée par sommet
+const trailCol = new Float32Array(TRAIL_N*TRAIL_LEN*3);
+trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol,3));
+
+const trailMat = new THREE.LineBasicMaterial({
+  vertexColors: true, transparent:true, opacity:0.55,
+  blending: THREE.AdditiveBlending, depthWrite:false
+});
+const trails = new THREE.LineSegments(trailGeo, trailMat);
+trails.frustumCulled = false;
+scene.add(trails);
+
+// recrée les segments (chaque particule -> TRAIL_LEN-1 segments)
+const trailIndex = [];
+for (let i=0;i<TRAIL_N;i++){
+  for (let j=0;j<TRAIL_LEN-1;j++){
+    const a = i*TRAIL_LEN + j;
+    const b = a + 1;
+    trailIndex.push(a,b);
+  }
+}
+trailGeo.setIndex(trailIndex);
+
+// ============================================================
+// HALO central : la "singularité" (|ω| → ∞ visuellement)
+// ============================================================
+const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+  color: 0xff3377, transparent:true, opacity:0.8,
+  blending: THREE.AdditiveBlending, depthWrite:false
+}));
+halo.position.copy(ORIGIN);
+scene.add(halo);
+
+const halo2 = new THREE.Sprite(new THREE.SpriteMaterial({
+  color: 0x33ccff, transparent:true, opacity:0.4,
+  blending: THREE.AdditiveBlending, depthWrite:false
+}));
+halo2.position.copy(ORIGIN);
+scene.add(halo2);
+
+// ============================================================
+// ANIMATION
+// ============================================================
+const clock = new THREE.Clock();
+const omegaLabel = document.getElementById('omega');
+let simTime = 0;
+let paused = false;
+let singularity = 0;
+
+const _v = new THREE.Vector3();
+const _p = new THREE.Vector3();
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (paused) { controls.update(); renderer.render(scene,camera); return; }
+
+  const dt = Math.min(clock.getDelta(), 0.033);
+  simTime += dt;
+
+  // intensité de la singularité : croissance/pulse (|ω(0)| → grand)
+  singularity = 1.0 + 2.5*(0.5 + 0.5*Math.sin(simTime*0.5));
+  const omegaVal = (50 * singularity).toFixed(0);
+  omegaLabel.textContent = omegaVal;
+
+  // halo pulse + grossit avec la singularité
+  const pulse = 1.0 + 0.4*Math.sin(simTime*3.5);
+  halo.scale.setScalar(0.35 * pulse * (0.8 + singularity*0.25));
+  halo2.scale.setScalar(0.9 * pulse * (0.8 + singularity*0.15));
+  halo.material.opacity = 0.45 + 0.4*Math.sin(simTime*2.2);
+  halo2.material.opacity = 0.25 + 0.25*Math.sin(simTime*1.7 + 1.0);
+
+  // ---- particules liquide ----
+  for (let i=0;i<N;i++){
+    _p.set(pos[i*3], pos[i*3+1], pos[i*3+2]);
+    velocityAt(_p.x, _p.y, _p.z, simTime, seed[i], _v);
+    pos[i*3]   += _v.x * dt;
+    pos[i*3+1] += _v.y * dt;
+    pos[i*3+2] += _v.z * dt;
+
+    _p.set(pos[i*3], pos[i*3+1], pos[i*3+2]);
+    const r = _p.length();
+    const cosPhi = THREE.MathUtils.clamp(_p.y/(r+1e-6), -1, 1);
+    const distPole = Math.acos(cosPhi);
+    const heat = THREE.MathUtils.clamp(1 - distPole/0.85, 0, 1);
+
+    // vie : accélère près du pôle, recyclage hors domaine
+    life[i] -= dt * (0.10 + heat*0.85);
+    if (life[i] <= 0 || r < 0.08 || r > 2.4) {
+      spawn(i, Math.random()<0.4);
+      _p.set(pos[i*3], pos[i*3+1], pos[i*3+2]);
+    }
+
+    // taille + couleur (hue 0=cyan loin -> 1=rouge près pôle)
+    aSize[i]  = size[i] * (0.5 + heat*1.6) * (1.0 + 0.4*Math.sin(simTime*2.0 + seed[i]));
+    aHue[i]   = heat;
+    aAlpha[i] = 0.35 + 0.55*heat;
+  }
+  geo.attributes.position.needsUpdate = true;
+  geo.attributes.aSize.needsUpdate = true;
+  geo.attributes.aHue.needsUpdate = true;
+  geo.attributes.aAlpha.needsUpdate = true;
+
+  // ---- traînées ----
+  for (let i=0;i<TRAIL_N;i++){
+    // décalage de la tête
+    let hx = trailHead[i*3], hy = trailHead[i*3+1], hz = trailHead[i*3+2];
+    velocityAt(hx, hy, hz, simTime, trailSeed[i], _v);
+    hx += _v.x*dt; hy += _v.y*dt; hz += _v.z*dt;
+    trailHead[i*3]=hx; trailHead[i*3+1]=hy; trailHead[i*3+2]=hz;
+
+    // décalage des points de la traînée (suivi en cascade)
+    for (let j=TRAIL_LEN-1;j>0;j--){
+      const a=(i*TRAIL_LEN+j)*3, b=(i*TRAIL_LEN+j-1)*3;
+      trailPos[a]=trailPos[b]; trailPos[a+1]=trailPos[b+1]; trailPos[a+2]=trailPos[b+2];
+    }
+    const a0=(i*TRAIL_LEN)*3;
+    trailPos[a0]=hx; trailPos[a0+1]=hy; trailPos[a0+2]=hz;
+
+    // vie + recyclage
+    const r = Math.hypot(hx,hy,hz);
+    trailLife[i] -= dt*(0.08 + 0.4*(1 - Math.min(r,1.0)));
+    if (trailLife[i]<=0 || r<0.1 || r>2.4){
+      const p = new THREE.Vector3(...randInSphere(0.3,1.5));
+      trailHead[i*3]=p.x; trailHead[i*3+1]=p.y; trailHead[i*3+2]=p.z;
+      for (let j=0;j<TRAIL_LEN;j++){
+        const a=(i*TRAIL_LEN+j)*3;
+        trailPos[a]=p.x; trailPos[a+1]=p.y; trailPos[a+2]=p.z;
+      }
+      trailLife[i]=Math.random();
+    }
+
+    // couleurs dégradées le long de la traînée (queue transparente -> tête vive)
+    for (let j=0;j<TRAIL_LEN;j++){
+      const a=(i*TRAIL_LEN+j)*3;
+      const px=trailPos[a], py=trailPos[a+1], pz=trailPos[a+2];
+      const rr=Math.hypot(px,py,pz);
+      const cosPhi=THREE.MathUtils.clamp(py/(rr+1e-6),-1,1);
+      const dPole=Math.acos(cosPhi);
+      const heat=THREE.MathUtils.clamp(1-dPole/0.85,0,1);
+      const t = j/(TRAIL_LEN-1); // 0 queue -> 1 tête
+      // couleur : cyan -> magenta -> jaune près du pôle
+      const c = new THREE.Color().setHSL(0.58 - 0.48*heat, 0.9, 0.30 + 0.45*heat);
+      // atténuation vers la queue
+      const fade = (0.15 + 0.85*t);
+      trailCol[a]   = c.r*fade;
+      trailCol[a+1] = c.g*fade;
+      trailCol[a+2] = c.b*fade;
+    }
+  }
+  trailGeo.attributes.position.needsUpdate = true;
+  trailGeo.attributes.color.needsUpdate = true;
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// ============================================================
+// ÉVÉNEMENTS
+// ============================================================
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+addEventListener('keydown', (e) => {
+  if (e.code === 'Space') { paused = !paused; e.preventDefault(); }
+});
+</script>
+</body>
+</html>

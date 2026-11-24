@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Liquide Rectangulaire & Théorèmes Euler 3D</title>
+<style>
+  body { margin:0; overflow:hidden; background:#02040a; font-family:monospace; }
+  
+  /* HUD des théorèmes */
+  #hud {
+    position:absolute; top:20px; left:20px; color:#9fd; font-size:12px;
+    background:rgba(0,0,0,0.75); padding:16px 20px; border-radius:10px;
+    border:1px solid rgba(120,220,255,0.3); line-height:1.5; pointer-events:none;
+    max-width: 480px; backdrop-filter: blur(5px); box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  #hud h2 { margin: 0 0 10px 0; color:#6ef; font-size: 14px; border-bottom: 1px solid rgba(120,220,255,0.3); padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;}
+  #hud .thm { color: #ff5a8a; font-weight: bold; }
+  #hud .eq { color: #ffd700; font-style: italic; font-family: serif; font-size: 13px;}
+  #hud .sec { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(120,220,255,0.2); }
+  
+  /* Live overlay sur le vortex */
+  #live-vortex {
+    position:absolute; pointer-events:none; color:#ff5a8a; font-size:14px; font-weight:bold;
+    text-shadow: 0 0 10px rgba(255,90,138,0.8); transform: translate(-50%, -50%);
+  }
+  
+  #controls { position:absolute; bottom:20px; left:20px; color:#6a9; font-size:12px; }
+  canvas { display:block; }
+</style>
+</head>
+<body>
+
+<!-- HUD : Théorèmes du papier -->
+<div id="hud">
+  <h2>Résultats clés (Alpöge, Buckmaster, Coiculescu)</h2>
+  
+  <div><span class="thm">Théorème 1.1 (Explosion) :</span> Il existe <span class="eq">u₀ ∈ C<sup>∞</sup>(T³)</span> impair, div-free, dont la solution classique explose en <span class="eq">T* < ∞</span>.</div>
+  <div style="margin-top:6px;">• Vitesse bornée : <span class="eq">sup<sub>t<T*</sub> ‖u(t)‖<sub>L∞</sub> < ∞</span></div>
+  <div>• Vorticité infinie : <span class="eq">lim<sub>t→T*</sub> |curl u(t, 0)| = ∞</span></div>
+  
+  <div class="sec"><span class="thm">Critère de Beale–Kato–Majda :</span> Si <span class="eq">∫₀<sup>T</sup> ‖curl u(t)‖<sub>L∞</sub> dt = ∞</span>, la solution ne peut pas se prolonger lissement.</div>
+  
+  <div class="sec"><span class="thm">Théorème 4.2 (Inverse de Jacobi) :</span> Sous l'hypothèse de coercivité <span class="eq">H<sup>#</sup> ≤ Id</span>, il existe une unique correction <span class="eq">b(t,x)</span> solution linéarisée, avec estimation de Hölder.</div>
+  
+  <div class="sec"><span class="thm">Condition de non-explosion :</span> Si <span class="eq">‖ω(t)‖<sub>L∞</sub></span> reste intégrable, la solution est globale. La singularité est donc portée par le point d'origine.</div>
+</div>
+
+<!-- Overlay dynamique sur le vortex -->
+<div id="live-vortex">|ω(0)| → ∞</div>
+
+<div id="controls">Souris : orienter la caméra · Molette : zoom</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+// SCÈNE / CAMÉRA
+// ============================================================
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x02040a, 0.03);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(0, 2.5, 6);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setClearColor(0x02040a, 1);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.maxPolarAngle = Math.PI / 2 - 0.05;
+controls.minDistance = 2;
+controls.maxDistance = 12;
+
+// ============================================================
+// UNIFORMES
+// ============================================================
+const uniforms = {
+  uTime: { value: 0 },
+  uCameraPos: { value: new THREE.Vector3() },
+  uLightPos: { value: new THREE.Vector3(2, 5, 3) },
+  uVortexCenter: { value: new THREE.Vector3(0, 0, 0) }
+};
+
+// ============================================================
+// VERTEX SHADER (Calcul des vagues)
+// ============================================================
+const vShader = /* glsl */`
+  precision highp float;
+  varying vec3 vWorldPos;
+  varying vec3 vNormal;
+  varying float vWaveHeight;
+
+  uniform float uTime;
+  uniform vec3 uVortexCenter;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i + vec2(0.0,0.0)), hash(i + vec2(1.0,0.0)), u.x),
+               mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0,1.0)), u.x), u.y);
+  }
+
+  void main() {
+    vec3 pos = position;
+    float distToCenter = length(pos.xz - uVortexCenter.xz);
+    
+    float wave1 = sin(pos.x * 2.0 + uTime * 1.5) * cos(pos.z * 2.0 + uTime * 1.2) * 0.15;
+    float wave2 = sin(pos.x * 4.0 - uTime * 2.0) * 0.05;
+    float swirl = sin(atan(pos.z, pos.x) * 4.0 + distToCenter * 2.0 - uTime * 3.0) * 0.1;
+    float pull = exp(-distToCenter * 0.5) * 0.2;
+    
+    float height = wave1 + wave2 + swirl - pull;
+    pos.y += height;
+    vWaveHeight = height;
+
+    float eps = 0.1;
+    float hX = sin((pos.x + eps) * 2.0 + uTime * 1.5) * cos(pos.z * 2.0 + uTime * 1.2) * 0.15;
+    float hZ = sin(pos.x * 2.0 + uTime * 1.5) * cos((pos.z + eps) * 2.0 + uTime * 1.2) * 0.15;
+    
+    vec3 tangent = normalize(vec3(eps, hX - wave1, 0.0));
+    vec3 bitangent = normalize(vec3(0.0, hZ - wave1, eps));
+    vNormal = normalize(cross(bitangent, tangent));
+
+    vec4 worldPos = modelMatrix * vec4(pos, 1.0);
+    vWorldPos = worldPos.xyz;
+    
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
+  }
+`;
+
+// ============================================================
+// FRAGMENT SHADER (Raytracing simulé, reflets, réfraction)
+// ============================================================
+const fShader = /* glsl */`
+  precision highp float;
+  varying vec3 vWorldPos;
+  varying vec3 vNormal;
+  varying float vWaveHeight;
+
+  uniform float uTime;
+  uniform vec3 uCameraPos;
+  uniform vec3 uLightPos;
+  uniform vec3 uVortexCenter;
+
+  vec3 getSky(vec3 dir) {
+    float t = max(dir.y, 0.0);
+    vec3 topColor = vec3(0.05, 0.1, 0.2);
+    vec3 bottomColor = vec3(0.0, 0.02, 0.05);
+    vec3 sky = mix(bottomColor, topColor, pow(t, 0.5));
+    
+    float distToVortex = length(dir - normalize(uVortexCenter - uCameraPos));
+    float glow = exp(-distToVortex * 5.0) * 2.0;
+    sky += vec3(0.8, 0.1, 0.4) * glow;
+    
+    return sky;
+  }
+
+  void main() {
+    vec3 normal = normalize(vNormal);
+    vec3 viewDir = normalize(uCameraPos - vWorldPos);
+    vec3 lightDir = normalize(uLightPos - vWorldPos);
+
+    vec3 reflectDir = reflect(-viewDir, normal);
+    vec3 reflectedColor = getSky(reflectDir);
+
+    vec3 deepColor = vec3(0.0, 0.05, 0.1);
+    float depth = max(0.0, -vWaveHeight + 0.5);
+    vec3 refractedColor = mix(deepColor, vec3(0.0, 0.15, 0.3), exp(-depth * 2.0));
+
+    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 5.0);
+    fresnel = mix(0.05, 1.0, fresnel);
+
+    vec3 waterColor = mix(refractedColor, reflectedColor, fresnel);
+
+    vec3 halfVec = normalize(lightDir + viewDir);
+    float spec = pow(max(dot(normal, halfVec), 0.0), 128.0);
+    waterColor += vec3(1.0, 0.9, 0.8) * spec * 1.5;
+
+    float distToCenter = length(vWorldPos.xz - uVortexCenter.xz);
+    float vortexGlow = exp(-distToCenter * 0.8) * (0.5 + 0.5 * sin(uTime * 2.0));
+    waterColor += vec3(1.0, 0.2, 0.5) * vortexGlow * 0.6;
+
+    float foam = smoothstep(0.1, 0.2, vWaveHeight + 0.1);
+    waterColor = mix(waterColor, vec3(0.8, 0.9, 1.0), foam * 0.4);
+
+    waterColor = pow(waterColor, vec3(1.0 / 2.2));
+
+    gl_FragColor = vec4(waterColor, 1.0);
+  }
+`;
+
+// ============================================================
+// CRÉATION DE LA SURFACE D'EAU
+// ============================================================
+const waterGeo = new THREE.PlaneGeometry(20, 20, 128, 128);
+waterGeo.rotateX(-Math.PI / 2);
+
+const waterMat = new THREE.ShaderMaterial({
+  uniforms,
+  vertexShader: vShader,
+  fragmentShader: fShader,
+  side: THREE.DoubleSide
+});
+
+const water = new THREE.Mesh(waterGeo, waterMat);
+water.position.y = -0.5;
+scene.add(water);
+
+// ============================================================
+// OVERLAY LIVE (Théorème 1.1 : |ω(0)| → ∞)
+// ============================================================
+const liveVortex = document.getElementById('live-vortex');
+const vortexWorldPos = new THREE.Vector3(0, 0, 0); // Centre du vortex
+const vortexScreenPos = new THREE.Vector3();
+
+// ============================================================
+// ANIMATION
+// ============================================================
+const clock = new THREE.Clock();
+let simTime = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  simTime += dt;
+
+  uniforms.uTime.value = simTime;
+  uniforms.uCameraPos.value.copy(camera.position);
+
+  // Mise à jour de l'overlay 3D (position à l'écran du vortex)
+  vortexScreenPos.copy(vortexWorldPos).project(camera);
+  const x = (vortexScreenPos.x * 0.5 + 0.5) * innerWidth;
+  const y = (-vortexScreenPos.y * 0.5 + 0.5) * innerHeight;
+  
+  // Le texte pulse et affiche la valeur "infinie"
+  const pulse = 1.0 + 0.2 * Math.sin(simTime * 10.0);
+  liveVortex.style.left = `${x}px`;
+  liveVortex.style.top = `${y - 20}px`;
+  liveVortex.style.transform = `translate(-50%, -50%) scale(${pulse})`;
+  liveVortex.style.opacity = 0.5 + 0.5 * Math.abs(Math.sin(simTime * 3.0));
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

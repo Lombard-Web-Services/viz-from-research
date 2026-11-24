@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Liquide vortex — Euler 3D (net + animé)</title>
+<style>
+  body { margin:0; overflow:hidden; background:#01020a; font-family:monospace; }
+  #info {
+    position:absolute; top:12px; left:12px; color:#9fd; font-size:13px;
+    background:rgba(0,0,0,0.65); padding:10px 14px; border-radius:8px;
+    border:1px solid rgba(120,220,255,0.25); line-height:1.5; pointer-events:none;
+  }
+  #info b { color:#6ef; }
+  #omega { color:#ff5a8a; font-weight:bold; font-size:15px; }
+  #controls { position:absolute; bottom:14px; left:12px; color:#6a9; font-size:12px; }
+  canvas { display:block; }
+</style>
+</head>
+<body>
+<div id="info">
+  <b>Vortex liquide — singularité Euler 3D</b><br>
+  |ω(0)| → <span id="omega">0</span><br>
+  ‖u‖<sub>∞</sub> bornée · advection animée
+</div>
+<div id="controls">Souris : rotation · Molette : zoom · Espace : pause</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+// SCÈNE
+// ============================================================
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(2.4, 1.5, 3.0);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x01020a, 1);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.minDistance = 1.2;
+controls.maxDistance = 8;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;
+
+// ============================================================
+// UNIFORMES
+// ============================================================
+const uniforms = {
+  uTime:        { value: 0 },
+  uSingularity: { value: 1.0 },
+  uCameraPos:   { value: new THREE.Vector3() },
+  uLightDir:    { value: new THREE.Vector3(0.5, 0.85, 0.35).normalize() },
+  uRes:         { value: new THREE.Vector2(innerWidth, innerHeight) }
+};
+
+// ============================================================
+// VERTEX
+// ============================================================
+const vert = /* glsl */`
+  varying vec3 vWorldPos;
+  varying vec3 vObjPos;
+  void main() {
+    vObjPos = position;
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vWorldPos = wp.xyz;
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+
+// ============================================================
+// FRAGMENT — raymarching net + animé
+// ============================================================
+const frag = /* glsl */`
+  precision highp float;
+  varying vec3 vWorldPos;
+  varying vec3 vObjPos;
+
+  uniform float uTime;
+  uniform float uSingularity;
+  uniform vec3  uCameraPos;
+  uniform vec3  uLightDir;
+
+  // ---------- hash / noise ----------
+  float hash(vec3 p) {
+    p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+  }
+  float noise(vec3 x) {
+    vec3 i = floor(x);
+    vec3 f = fract(x);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(mix(hash(i+vec3(0,0,0)), hash(i+vec3(1,0,0)), f.x),
+          mix(hash(i+vec3(0,1,0)), hash(i+vec3(1,1,0)), f.x), f.y),
+      mix(mix(hash(i+vec3(0,0,1)), hash(i+vec3(1,0,1)), f.x),
+          mix(hash(i+vec3(0,1,1)), hash(i+vec3(1,1,1)), f.x), f.y),
+      f.z);
+  }
+  float fbm(vec3 p) {
+    float v = 0.0, a = 0.5;
+    for (int i = 0; i < 4; i++) {
+      v += a * noise(p);
+      p *= 2.03;
+      a *= 0.5;
+    }
+    return v;
+  }
+
+  // ---------- champ de densité du vortex ----------
+  // Le fluide est une coquille qui spirale autour de y.
+  // Advection : le motif tourne avec le temps (mouvement net).
+  float densityField(vec3 p) {
+    float r = length(p) + 1e-5;
+    float rho = length(p.xz) + 1e-5;
+
+    float cosPhi = clamp(p.y / r, -1.0, 1.0);
+    float distPole = acos(cosPhi);
+    float theta = atan(p.z, p.x);
+
+    // --- rotation + spirale animée ---
+    // Le fluide tourne autour de y (omega croissant près du pôle)
+    float angSpeed = 1.6 / (0.15 + distPole*distPole);
+    float adv = theta + uTime * angSpeed;
+
+    // spirale : bandes qui se tordent
+    float spiral = sin(adv * 3.0 + distPole * 10.0 - uTime * 0.6);
+
+    // turbulence organique advectée (le motif se déplace)
+    vec3 q = p * 2.5;
+    q.y -= uTime * 0.8;                 // remontée vers le pôle
+    float turb = fbm(q + vec3(0.0, 0.0, adv * 0.5));
+
+    // coquille de fluide
+    float shell = smoothstep(1.45, 0.95, r) * smoothstep(0.10, 0.30, r);
+
+    // concentration près du pôle (singularité, pulse)
+    float conc = exp(-distPole * 3.0) * (0.6 + 0.4 * uSingularity);
+
+    // densité = bandes + turbulence + concentration
+    float d = (0.35 + 0.65 * (0.5 + 0.5 * spiral)) * (0.4 + 0.9 * turb);
+    d *= shell;
+    d += conc * shell * 1.2;
+
+    return clamp(d, 0.0, 1.0);
+  }
+
+  // ---------- couleur ----------
+  vec3 colorField(vec3 p, float d) {
+    float r = length(p) + 1e-5;
+    float cosPhi = clamp(p.y / r, -1.0, 1.0);
+    float distPole = acos(cosPhi);
+    float heat = clamp(1.0 - distPole / 1.3, 0.0, 1.0);
+
+    vec3 cold = vec3(0.02, 0.35, 0.85);  // bleu profond
+    vec3 mid  = vec3(0.10, 0.85, 1.00);  // cyan
+    vec3 warm = vec3(1.00, 0.20, 0.65);  // magenta
+    vec3 hot  = vec3(1.00, 0.85, 0.40);  // jaune
+
+    vec3 c = mix(cold, mid, smoothstep(0.0, 0.35, heat));
+    c = mix(c, warm, smoothstep(0.35, 0.75, heat));
+    c = mix(c, hot,  smoothstep(0.75, 1.0, heat));
+    return c * (0.55 + 0.9 * d);
+  }
+
+  // ---------- intersection boîte ----------
+  vec2 boxIntersect(vec3 ro, vec3 rd, vec3 bmin, vec3 bmax) {
+    vec3 inv = 1.0 / rd;
+    vec3 t0 = (bmin - ro) * inv;
+    vec3 t1 = (bmax - ro) * inv;
+    vec3 tmin = min(t0, t1);
+    vec3 tmax = max(t0, t1);
+    return vec2(max(max(tmin.x, tmin.y), tmin.z),
+                min(min(tmax.x, tmax.y), tmax.z));
+  }
+
+  void main() {
+    vec3 ro = uCameraPos;
+    vec3 rd = normalize(vWorldPos - uCameraPos);
+
+    vec3 bmin = vec3(-1.6);
+    vec3 bmax = vec3( 1.6);
+    vec2 tb = boxIntersect(ro, rd, bmin, bmax);
+    float tStart = max(tb.x, 0.0);
+    float tEnd = tb.y;
+    if (tEnd <= tStart) discard;
+
+    // pas régulier NET (pas de jitter flou)
+    const int STEPS = 110;
+    float dt = (tEnd - tStart) / float(STEPS);
+
+    vec3 accumColor = vec3(0.0);
+    float accumAlpha = 0.0;
+    float transmittance = 1.0;
+
+    // petit décalage par pixel pour anti-banding, mais très faible
+    float jitter = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233))) * 43758.5453);
+    float t = tStart + dt * (0.15 + 0.7 * jitter);
+
+    for (int i = 0; i < STEPS; i++) {
+      vec3 p = ro + rd * t;
+      float d = densityField(p);
+
+      if (d > 0.008) {
+        vec3 c = colorField(p, d);
+
+        // normale par gradient de densité
+        float eps = 0.035;
+        vec3 n = normalize(vec3(
+          densityField(p + vec3(eps,0,0)) - densityField(p - vec3(eps,0,0)),
+          densityField(p + vec3(0,eps,0)) - densityField(p - vec3(0,eps,0)),
+          densityField(p + vec3(0,0,eps)) - densityField(p - vec3(0,0,eps))
+        ));
+        float diff = max(dot(n, uLightDir), 0.0);
+        float spec = pow(max(dot(reflect(-uLightDir, n), -rd), 0.0), 16.0);
+        float light = 0.35 + 0.9 * diff + 0.4 * spec;
+
+        // Beer-Lambert : absorption propre, pas de saturation blanche
+        float alpha = 1.0 - exp(-d * dt * 22.0);
+        accumColor += transmittance * alpha * c * light;
+        accumAlpha += transmittance * alpha;
+        transmittance *= (1.0 - alpha * 0.9);
+
+        if (transmittance < 0.03) break;
+      }
+      t += dt;
+    }
+
+    // glow central : radial, pas de bord carré
+    vec3 pNear = ro + rd * tStart;
+    float glow = exp(-length(pNear) * 5.0) * uSingularity * 0.35;
+    accumColor += vec3(1.0, 0.45, 0.7) * glow;
+
+    vec4 outColor = vec4(accumColor, clamp(accumAlpha, 0.0, 1.0));
+    if (outColor.a < 0.01) discard;
+    gl_FragColor = outColor;
+  }
+`;
+
+// ============================================================
+// BOÎTE VOLUMÉTRIQUE
+// ============================================================
+const boxGeo = new THREE.BoxGeometry(3.2, 3.2, 3.2);
+const boxMat = new THREE.ShaderMaterial({
+  uniforms,
+  vertexShader: vert,
+  fragmentShader: frag,
+  transparent: true,
+  depthWrite: false,
+  side: THREE.BackSide,
+  blending: THREE.NormalBlending
+});
+scene.add(new THREE.Mesh(boxGeo, boxMat));
+
+// ============================================================
+// ÉTOILES DE FOND (profondeur)
+// ============================================================
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(600*3);
+for (let i=0;i<600;i++){
+  const r = 6 + Math.random()*20;
+  const u = Math.random()*2-1;
+  const th = Math.random()*Math.PI*2;
+  const s = Math.sqrt(1-u*u);
+  starPos[i*3]   = r*s*Math.cos(th);
+  starPos[i*3+1] = r*u;
+  starPos[i*3+2] = r*s*Math.sin(th);
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos,3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+  color:0x2a5a8a, size:0.07, transparent:true, opacity:0.7, depthWrite:false
+})));
+
+// ============================================================
+// ANIMATION
+// ============================================================
+const clock = new THREE.Clock();
+const omegaLabel = document.getElementById('omega');
+let simTime = 0, paused = false;
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (paused) { controls.update(); renderer.render(scene,camera); return; }
+
+  const dt = Math.min(clock.getDelta(), 0.033);
+  simTime += dt;
+
+  // pulse net de la singularité
+  const singularity = 1.0 + 1.5 * (0.5 + 0.5 * Math.sin(simTime * 0.8));
+  omegaLabel.textContent = (80 * singularity).toFixed(0);
+
+  uniforms.uTime.value = simTime;
+  uniforms.uSingularity.value = singularity;
+  uniforms.uCameraPos.value.copy(camera.position);
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  uniforms.uRes.value.set(innerWidth, innerHeight);
+});
+addEventListener('keydown', (e) => {
+  if (e.code === 'Space') { paused = !paused; e.preventDefault(); }
+});
+</script>
+</body>
+</html>
