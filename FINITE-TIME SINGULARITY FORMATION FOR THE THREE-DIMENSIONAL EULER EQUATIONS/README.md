@@ -93,10 +93,6 @@ Click on the links or images to launch the visualizations in your browser (WebGL
 [![Vorticity - Particles and streamlines](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/Vorticit%C3%A9-Particules-lignes-de-flux.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/Vorticit%C3%A9-Particules-lignes-de-flux.html)
 - **File:** `Vorticité-Particules-lignes-de-flux.html`
 - **Description:** A fluid rendering using a cloud of glowing particles combined with smooth, continuous streamlines. The vortex concentrates its vorticity near the "origin" pole, illustrating the local grow
-#### 4. Vortex Local — Singularité (Volume & Advection)
-[![Vortex volumétrique animé](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/vortex-local-singularity.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/vortex-local-singularity.html)
-- **Fichier :** `vortex-local-singularity.html`
-- **Description :** Une vue par « raymarching » volumétrique qui génère une apparence de fluide épais et organique. Le motif tourne et s'enroule en spirale autour de l'axe central, simulant l'advection. La concentration de densité au centre pulse, métaphore visuelle de l'explosion mathématique de la vorticité (`|ω(0)| → ∞`).th of `|ω(0)|` while the global velocity remains bounded by a clamp (Theorem 1.1). The color shifts from cyan to magenta/yellow as it approaches the singularity.
 
 ---
 
