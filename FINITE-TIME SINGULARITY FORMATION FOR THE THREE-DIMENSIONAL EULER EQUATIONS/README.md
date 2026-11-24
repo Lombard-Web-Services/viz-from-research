@@ -1,4 +1,3 @@
-# Finite-Time Singularity Formation for the 3D Euler Equations
 # Formation de singularité en temps fini pour les équations d'Euler 3D
 
 **Auteurs du papier / Paper Authors:** Levent Alpöge, Tristan Buckmaster, Matei P. Coiculescu
@@ -75,6 +74,7 @@ Aucune installation n'est requise. Ouvrez simplement les fichiers `.html` dans u
 - **Licence :** MIT.
 
 ---
+# Finite-Time Singularity Formation for the 3D Euler Equations
 
 ## 🇬🇧 English
 
