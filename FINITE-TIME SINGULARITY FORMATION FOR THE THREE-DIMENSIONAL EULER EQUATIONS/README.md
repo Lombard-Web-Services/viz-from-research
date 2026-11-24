@@ -29,9 +29,9 @@ Cliquez sur les liens ou les images pour lancer les visualisations dans votre na
 
 ---
 
-#### 2. Vortex Volumétrique Animé
-[![Vortex volumétrique animé](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/vortex-local-singularity.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/vortex-local-singularity.html)
-- **Fichier :** `vortex-local-singularity.html`
+#### 2. Vorticité
+[![Vortex volumétrique animé](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/Vorticité.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/Vorticité.png.html)
+- **Fichier :** `Vorticité.png.html`
 - **Description :** Rendu volumétrique par "raymarching" générant une apparence de fluide dense avec des bandes de vorticité en rotation. La singularité centrale pulse, métaphore visuelle de l'explosion mathématique de la vorticité.
 
 ---
@@ -50,7 +50,7 @@ Cliquez sur les liens ou les images pour lancer les visualisations dans votre na
 
 ---
 
-#### 5. Liquide Rectangulaire & Théorèmes
+#### 5. Liquide Rectangulaire & Théorèmes, Résultats clés
 [![Théorèmes et surface liquide](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/resultats_alpoge-buckmaster-coiculescu..png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/resultats_alpoge-buckmaster-coiculescu..html)
 - **Fichier :** `resultats_alpoge-buckmaster-coiculescu..html`
 - **Description :** Une surface d'eau rectangulaire avec un shader de réflexion/réfraction (simulation de raytracing). Un HUD superposé affiche les théorèmes clés du papier (Théorème 1.1, Critère de Beale-Kato-Majda, Théorème 4.2 sur l'inverse de Jacobi).
