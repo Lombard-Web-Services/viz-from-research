@@ -41,28 +41,21 @@ Cliquez sur les liens ou les images pour lancer les visualisations dans votre na
 
 ---
 
-#### 4. Vortex Local — Singularité (Volume & Advection)
-[![Vortex volumétrique animé](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/vortex-local-singularity.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/vortex-local-singularity.html)
-- **Fichier :** `vortex-local-singularity.html`
-- **Description :** Une vue par « raymarching » volumétrique qui génère une apparence de fluide épais et organique. Le motif tourne et s'enroule en spirale autour de l'axe central, simulant l'advection. La concentration de densité au centre pulse, métaphore visuelle de l'explosion mathématique de la vorticité (`|ω(0)| → ∞`).
-
----
-
-#### 5. Vortex Liquide — Singularité Euler 3D (Net & Animé)
+#### 4. Vortex Liquide — Singularité Euler 3D (Net & Animé)
 [![Vortex liquide](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/Vortex-liquide-Singularite-euler-3D.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/Vortex-liquide-Singularite-euler-3D.html)
 - **Fichier :** `Vortex-liquide-Singularite-euler-3D.html`
 - **Description :** Un rendu de fluide net et contrasté utilisant un shader de raymarching optimisé. Le vortex présente des bandes de vorticité animées qui tournent et s'élèvent vers le pôle. L'absorption de Beer-Lambert et l'éclairage dynamique donnent un effet de volume réaliste, où la singularité centrale brille intensément.
 
 ---
 
-#### 6. Liquide Rectangulaire & Théorèmes, Résultats Clés
+#### 5. Liquide sur plan Rectangulaire & Théorèmes, Résultats Clés
 [![Théorèmes et surface liquide](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/resultats_alpoge-buckmaster-coiculescu..png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/resultats_alpoge-buckmaster-coiculescu..html)
 - **Fichier :** `resultats_alpoge-buckmaster-coiculescu..html`
 - **Description :** Une surface d'eau rectangulaire interactive avec des vagues (vertex shader) et des effets de réflexion/réfraction (fragment shader simulant le raytracing). Un HUD superposé affiche les théorèmes clés du papier (Théorème 1.1, Critère de Beale-Kato-Majda, Théorème 4.2, Condition de non-explosion) tandis qu'une étiquette dynamique indique `|ω(0)| → ∞`.
 
 ---
 
-#### 7. Visualisation des 4 Théorèmes (Split Screen)
+#### 6. Visualisation des 4 Théorèmes (Split Screen)
 [![4 Théorèmes](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/theoreme_alpoge-buckmaster-coiculescu.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/theoreme_alpoge-buckmaster-coiculescu.html)
 - **Fichier :** `theoreme_alpoge-buckmaster-coiculescu.html`
 - **Description :** Une scène divisée en quatre quadrants, chacun illustrant un concept mathématique spécifique par une surface liquide animée :
@@ -99,7 +92,11 @@ Click on the links or images to launch the visualizations in your browser (WebGL
 #### 1. Vorticity — Particles & Streamlines
 [![Vorticity - Particles and streamlines](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/Vorticit%C3%A9-Particules-lignes-de-flux.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/Vorticit%C3%A9-Particules-lignes-de-flux.html)
 - **File:** `Vorticité-Particules-lignes-de-flux.html`
-- **Description:** A fluid rendering using a cloud of glowing particles combined with smooth, continuous streamlines. The vortex concentrates its vorticity near the "origin" pole, illustrating the local growth of `|ω(0)|` while the global velocity remains bounded by a clamp (Theorem 1.1). The color shifts from cyan to magenta/yellow as it approaches the singularity.
+- **Description:** A fluid rendering using a cloud of glowing particles combined with smooth, continuous streamlines. The vortex concentrates its vorticity near the "origin" pole, illustrating the local grow
+#### 4. Vortex Local — Singularité (Volume & Advection)
+[![Vortex volumétrique animé](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/vortex-local-singularity.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/vortex-local-singularity.html)
+- **Fichier :** `vortex-local-singularity.html`
+- **Description :** Une vue par « raymarching » volumétrique qui génère une apparence de fluide épais et organique. Le motif tourne et s'enroule en spirale autour de l'axe central, simulant l'advection. La concentration de densité au centre pulse, métaphore visuelle de l'explosion mathématique de la vorticité (`|ω(0)| → ∞`).th of `|ω(0)|` while the global velocity remains bounded by a clamp (Theorem 1.1). The color shifts from cyan to magenta/yellow as it approaches the singularity.
 
 ---
 
@@ -117,28 +114,21 @@ Click on the links or images to launch the visualizations in your browser (WebGL
 
 ---
 
-#### 4. Local Vortex — Singularity (Volume & Advection)
-[![Animated volumetric vortex](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/vortex-local-singularity.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/vortex-local-singularity.html)
-- **File:** `vortex-local-singularity.html`
-- **Description:** A volumetric raymarching view that generates a thick, organic fluid appearance. The pattern rotates and spirals around the central axis, simulating advection. The density concentration at the center pulses, a visual metaphor for the mathematical blow-up of vorticity (`|ω(0)| → ∞`).
-
----
-
-#### 5. Liquid Vortex — Euler 3D Singularity (Crisp & Animated)
+#### 4. Liquid Vortex — Euler 3D Singularity (Crisp & Animated)
 [![Liquid vortex](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/Vortex-liquide-Singularite-euler-3D.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/Vortex-liquide-Singularite-euler-3D.html)
 - **File:** `Vortex-liquide-Singularite-euler-3D.html`
 - **Description:** A crisp and contrasted fluid rendering using an optimized raymarching shader. The vortex features animated vorticity bands that rotate and rise toward the pole. Beer-Lambert absorption and dynamic lighting give a realistic volume effect, with the central singularity glowing intensely.
 
 ---
 
-#### 6. Rectangular Liquid & Theorems, Key Results
+#### 5. Rectangular Liquid & Theorems, Key Results
 [![Theorems and liquid surface](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/resultats_alpoge-buckmaster-coiculescu..png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/resultats_alpoge-buckmaster-coiculescu..html)
 - **File:** `resultats_alpoge-buckmaster-coiculescu..html`
 - **Description:** An interactive rectangular water surface with waves (vertex shader) and reflection/refraction effects (fragment shader simulating raytracing). An overlaid HUD displays the paper's key theorems (Theorem 1.1, Beale-Kato-Majda Criterion, Theorem 4.2, Non-blow-up condition) while a dynamic label indicates `|ω(0)| → ∞`.
 
 ---
 
-#### 7. Visualization of the 4 Theorems (Split Screen)
+#### 6. Visualization of the 4 Theorems (Split Screen)
 [![4 Theorems](https://raw.githubusercontent.com/Lombard-Web-Services/viz-from-research/main/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/images/theoreme_alpoge-buckmaster-coiculescu.png)](https://lombard-web-services.github.io/viz-from-research/FINITE-TIME%20SINGULARITY%20FORMATION%20FOR%20THE%20THREE-DIMENSIONAL%20EULER%20EQUATIONS/theoreme_alpoge-buckmaster-coiculescu.html)
 - **File:** `theoreme_alpoge-buckmaster-coiculescu.html`
 - **Description:** A scene divided into four quadrants, each illustrating a specific mathematical concept through an animated liquid surface:
